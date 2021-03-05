@@ -42,6 +42,23 @@ struct videoInfos{
 
 int main(int argc, char* argv[]){
     
+    int debug = 0;
+    char* flux_entree;
+    char* flux_sortie;
+    FILE videoFile;
+
+    while (c = getopt(argc, argv, "d") != -1) {
+        switch (c) {
+        case 'd': devug = 1; break;
+        }
+    }
+    if (optind + 1 < argc) {
+        flux_entree = argv[optind];
+        flux_entree = argv[optind + 1];
+    } else {
+        fprintf(stderr, "Le decodeur a besoin du du fichier video d'entree et le flux de sortie \n");
+    }
+
     // Écrivez le code de décodage et d'envoi sur la zone mémoire partagée ici!
     // N'oubliez pas que vous pouvez utiliser jpgd::decompress_jpeg_image_from_memory()
     // pour décoder une image JPEG contenue dans un buffer!
