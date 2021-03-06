@@ -9,23 +9,26 @@
 #include "commMemoirePartagee.h"
 #include "utils.h"
 
+#define DEFAULT_ORDO "NORT"
+#define DEFAULT_DEADLINE_OPTION "1000,1000,1000"
+#define DEFAULT_IMAGE_IN "/redimesionIn"
+#define DEFAULT_IMAGE_OUT "/redimesionOut"
 
 int main(int argc, char* argv[]){
     
 
         int debug = 0;
-        char *imageIn;
-        char *imageOut;
-        char *type_ord;
-        char *options;
-        int default_option = 0;
-        int numberOfOptions = 0;
+        char imageIn[100] = DEFAULT_IMAGE_IN;
+        char imageOut [100] = DEFAULT_IMAGE_OUT;
+        char type_ord[100] = DEFAULT_ORDO;
+        char options[100] = DEFAULT_DEADLINE_OPTION ;
         int largeur = 1;
         int hauteur = 1;
         int methode = 0;
         struct sched_attr ord;
+        int c;
 
-        while (c = getopt(argc, argv, "awhs:d::m:") != -1) {
+        while ((c = getopt(argc, argv, "awhs:d::m:")) != -1) {
         switch (c) {
 
         case 'a': 
@@ -33,25 +36,23 @@ int main(int argc, char* argv[]){
             break;
 
         case 'd': 
-            default_option = 1;
-            options = optarg;
-            numberOfOptions++; 
+            strcpy(options, optarg);
             break;
 
         case 'w': 
-            largeur = (atoi)optarg; 
+            largeur = atoi(optarg); 
             break;
         
          case 'h': 
-            hauteur = (atoi)optarg; 
+            hauteur = atoi(optarg); 
             break;
 
         case 's':
-            type_ord = optarg;
+            strcpy(type_ord, optarg);
             break;
         
         case 'm':
-            methode = (atoi)optarg;
+            methode = atoi(optarg);
             break;
 
         default:
@@ -65,8 +66,8 @@ int main(int argc, char* argv[]){
     // Traite les différentes options
     if (debug == 0) {
         if (argc - optind  != 2) {
-            imageIn = argv[optind];
-            imageOut = argv[optind + 1];
+            strcpy(imageIn,  argv[optind]);
+            strcpy(imageOut,argv[optind + 1]);
         } else {
 
             fprintf(stderr, "Le decodeur a besoin du  fichier video d'entree et le flux de sortie \n");
@@ -74,7 +75,7 @@ int main(int argc, char* argv[]){
         }
 
         // Verifie type ordonnancement
-        sched_getattr(0, &ord,0);
+        sched_getattr(0, &ord,sizeof(struct sched_attr),0);
         if(strcmp(type_ord, "NORT\0")){
             // default setting
         } else if(strcmp(type_ord, "RR\0")) {
@@ -84,26 +85,16 @@ int main(int argc, char* argv[]){
         } else if (strcmp(type_ord, "DEADLINE\0")){
             ord.sched_policy = SCHED_DEADLINE;
             ord.sched_priority = -101;
-            if (default_option == 1){
-                ord.sched_runtime = (__u64)atoi(strtok(options,",")); 
-                ord.sched_deadline = (__u64)atoi(strtok(options,","));
-                ord.sched_period = (__u64)atoi(strtok(options,","));
-            } else {
-                // ord.sched_runtime = (__u64); 
-                // ord.sched_deadline = (__u64);
-                // ord.sched_period = (__u64);
-            }
+            ord.sched_runtime = (__u64)atoi(strtok(options,",")); 
+            ord.sched_deadline = (__u64)atoi(strtok(options,","));
+            ord.sched_period = (__u64)atoi(strtok(options,","));
+
         } else {
-            printf("NO BUENO ORDONNANCEMENT")
+            printf("NO BUENO ORDONNANCEMENT");
             exit(EXIT_FAILURE);
             
         }
         sched_setattr(0, &ord, 0);           
-    } else { //  Parametres par default 
-        // flux_entree = VIDEO_PATH;
-        // flux_sortie = MEMOIRE_SETR;
-        type_ord = "NORT\0";
-         
     }
 
     // Écrivez le code permettant de redimensionner une image (en utilisant les fonctions précodées
@@ -126,7 +117,7 @@ int main(int argc, char* argv[]){
     
     // Preparation memoire & initialisation memoire ecrivain
     prepareMemoire(memImageIn.tailleDonnees, hauteur*largeur*memImageIn.header->canaux);
-    initMemoirePartageeEcrivain(imageOut, &memImageOut);
+    //initMemoirePartageeEcrivain(imageOut, &memImageOut);
 
     int hauteur_in = memImageIn.header->hauteur;
     int largeur_in = memImageIn.header->largeur;
