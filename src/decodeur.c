@@ -153,7 +153,7 @@ int main(int argc, char* argv[]){
     size_t tailleFenetre = vInfos.largeur * vInfos.hauteur * vInfos.canaux
     prepareMemoire(0, tailleFenetre);
 
-    // Memoire ecrivain
+    // Memoire initialisation
     memPartage memP;
     memPartageHeader memPH;
     memPH.frameWriter = 0;
@@ -167,7 +167,6 @@ int main(int argc, char* argv[]){
 
     // Copie du fichier en memoire
     // On se place a un offset de 20 par rapport au debut du fichier
-    // 
 
     uint32_t index = OFFSET_FIRST_IMAGE;
     uint32_t indexLecteur = 0 ;
