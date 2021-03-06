@@ -61,8 +61,11 @@
 #include "commMemoirePartagee.h"
 #include "utils.h"
 
-#define DEFAULT_FLUX_ENTREE "/BassinMemoire"
+#define DEFAULT_FLUX_ENTREE "/BassinMemoire\0"
+#define DEFAULT_ORDO "NORT\0"
+#define DEFAULT_DEADLINE_OPTION "1000,1000,1000\0"
 double frames_cnt[] = {0, 0, 0, 0};
+
 
 // Fonction permettant de récupérer le temps courant sous forme double
 double get_time()
@@ -191,18 +194,16 @@ int main(int argc, char* argv[])
     // ÉCRIVEZ ICI votre code d'analyse des arguments du programme et d'initialisation des zones mémoire partagées
 	int debug = 0;
 	struct memPartage zone[4];
-    char *type_ord;
-    char *options;
-    int numberOfOptions = 0;
-    int default_option = 0;
+    char type_ord[100] = DEFAULT_ORDO;
+    char options[100] = DEFAULT_DEADLINE_OPTION ;
     struct sched_attr ord;
 	int nbrActifs;      // Après votre initialisation, cette variable DOIT contenir le nombre de flux vidéos actifs (de 1 à 4 inclusivement).
 	size_t max_size = 0;
-	
+	int c;
 
 
 
-    while (c = getopt(argc, argv, "ad::s:") != -1) {
+    while ((c = getopt(argc, argv, "a::d::s:")) != -1) {
         switch (c) {
 
         case 'a': 
@@ -210,13 +211,11 @@ int main(int argc, char* argv[])
             break;
 
         case 'd': 
-            default_option = 1;
-            options = optarg;
-            numberOfOptions++; 
+			strcpy(options, optarg);
             break;
         
         case 's':
-            type_ord = optarg;
+            strcpy(type_ord, optarg);
             break;
 
         default:
@@ -231,20 +230,20 @@ int main(int argc, char* argv[])
 		nbrActifs = argc - optind;
 
         if (nbrActifs < 1 && nbrActifs < 5) {
-            for(int i = 0; i < nbrActifs; i++)
+            for(int i = 0; i < nbrActifs; i++){
 				if(initMemoirePartageeLecteur(argv[i+optind], &zone[i]) != 0)
            			exit(EXIT_FAILURE);
 
 				if (zone[i].tailleDonnees > max_size) 
             		max_size = zone[i].tailleDonnees;
+			}
         } else {
             fprintf(stderr, "Le compositeur a besoin d'au moins un flux d'entree et un maximum de 4 flux d'entree\n");
             exit(EXIT_FAILURE);
         }
 
-
         // Verifie type ordonnancement
-        sched_getattr(0, &ord,0);
+        sched_getattr(0, &ord,sizeof(struct sched_attr),0);
         if(strcmp(type_ord, "NORT\0")){
             // default setting
         } else if(strcmp(type_ord, "RR\0")) {
@@ -254,24 +253,19 @@ int main(int argc, char* argv[])
         } else if (strcmp(type_ord, "DEADLINE\0")){
             ord.sched_policy = SCHED_DEADLINE;
             ord.sched_priority = -101;
-            if (default_option == 1){
-                ord.sched_runtime = (__u64)atoi(strtok(options,",")); 
-                ord.sched_deadline = (__u64)atoi(strtok(options,","));
-                ord.sched_period = (__u64)atoi(strtok(options,","));
-            } else {
-                // ord.sched_runtime = (__u64); 
-                // ord.sched_deadline = (__u64);
-                // ord.sched_period = (__u64);
-            }
+			ord.sched_runtime = (__u64)atoi(strtok(options,",")); 
+			ord.sched_deadline = (__u64)atoi(strtok(options,","));
+			ord.sched_period = (__u64)atoi(strtok(options,","));
         } else {
-            printf("NO BUENO ORDONNANCEMENT")
+            printf("NO BUENO ORDONNANCEMENT \n");
             exit(EXIT_FAILURE);
         }
         sched_setattr(0, &ord, 0);
+
     } else { //  Parametres par default 
-		initMemoirePartageeLecteur(DEFAULT_FLUX_ENTREE, &zone[0])
+		initMemoirePartageeLecteur(DEFAULT_FLUX_ENTREE, &zone[0]);
 		max_size = zone[0].tailleDonnees;
-        type_ord = "NORT\0";
+		nbrActifs = 1;
     }
 
 	prepareMemoire(max_size, 0);
@@ -345,7 +339,6 @@ int main(int argc, char* argv[])
 	/*
 	* MY CODE HERE
 	*/
-	size_t taille
 	double framePeriode[4];
 	double lastFrameTime[4];
 	double currentTime = get_time();
@@ -377,7 +370,7 @@ int main(int argc, char* argv[])
 
 			// Ecrit le FPS de tous les flux dans le fichier stat.txt
 			currentTime = get_time();
-			deltaTime = currentTime - lastFPSPooling
+			deltaTime = currentTime - lastFPSPooling;
 			if(deltaTime > 1){ //update the fps count in stat.txt
 
 				fileStat = fopen("stats.txt", "a");
@@ -387,8 +380,8 @@ int main(int argc, char* argv[])
 
 				fseek(fileStat, 0, SEEK_END);
 				for (int i = 0; i < nbrActifs; i++) {
-					fprintf(fileStat, "(%d) flux %d: %f\n", currentTime, i, frames_cnt[i] / deltaTime);
-					frames_count[i] = 0;
+					fprintf(fileStat, "(%f) flux %d: %f\n", currentTime, i, frames_cnt[i] / deltaTime);
+					frames_cnt[i] = 0;
             	}
 				fclose(fileStat);
 			}
@@ -399,7 +392,7 @@ int main(int argc, char* argv[])
 
 				if(get_time() - lastFrameTime[i] > framePeriode[i]){
 				
-					if(attenteLecteurAsync(&zones[i]) != 0){				
+					if(attenteLecteurAsync(&zone[i]) != 0){				
 						ecrireImage(i, 
 									nbrActifs, 
 									fbfd, 
@@ -414,8 +407,8 @@ int main(int argc, char* argv[])
 									zone[i].header->canaux);
 
 						lastFrameTime[i] = get_time();
-						zones[i].header->frameReader++;
-						pthread_mutex_unlock(&zones[i].header->mutex);
+						zone[i].header->frameReader++;
+						pthread_mutex_unlock(&zone[i].header->mutex);
 					}
 				}
 			}

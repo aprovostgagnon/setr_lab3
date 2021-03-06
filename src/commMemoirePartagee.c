@@ -4,13 +4,13 @@
 int initMemoirePartageeLecteur(const char* identifiant,
                                 struct memPartage *zone){
     //Si le lecteur essaye d'ouvrir le fd avant que l'ecrivaint l'est creer, il boucle en attente                              
-    while(zone->fd = shm_open(identifiant, O_RDWR, 0666) < 0)
+    while((zone->fd = shm_open(identifiant, O_RDWR, 0666)) < 0);
 
     //Si l'ecrivaint n'a pas decouper memoire partage (ftruncate) et creer avec mmamp, le lecteur boucle
     struct stat sharedMemStat;    
     do{
         fstat(zone->fd, &sharedMemStat);
-    } while(sharedMemStat.st_size == 0)
+    } while(sharedMemStat.st_size == 0);
 
     //Optient la memoire partage
     void *sharedMem = mmap(NULL, sharedMemStat.st_size, PROT_READ | PROT_WRITE,MAP_SHARED, zone->fd, 0);
@@ -19,7 +19,7 @@ int initMemoirePartageeLecteur(const char* identifiant,
     while(zone->header->frameWriter == 0)
 
     //init la struct qui sert a communique avec la zone partage
-    zone->data = (unsigned char*)(sharedMem + sizeof(memPartageHeader));
+    zone->data = (unsigned char*)((uint8_t*)sharedMem + sizeof(memPartageHeader));
     zone->header = (memPartageHeader*)sharedMem;
     zone->copieCompteur = zone->header->frameWriter;                                                // A voir
     zone->header = (memPartageHeader*) sharedMem;
@@ -38,7 +38,7 @@ int initMemoirePartageeEcrivain(const char* identifiant,
                                 struct memPartageHeader* headerInfos){
 
     // creer le file descriptor (fd) qui ser a communiquer entre les processus                                
-    if(zone->fd = shm_open(identifiant, O_RDWR | O_CREAT, 0666) < 0)
+    if((zone->fd = shm_open(identifiant, O_RDWR | O_CREAT, 0666)) < 0)
         return -1;
     
     // creer une zone de memoire partage de taille taille+header
@@ -48,22 +48,22 @@ int initMemoirePartageeEcrivain(const char* identifiant,
     
     //init le mutex utilise par l'ecrivain et lecteur
     pthread_mutexattr_t mutex_attr;
-    pthread_attr_init(&mutex_attr);
+    pthread_mutexattr_init(&mutex_attr);
     pthread_mutexattr_setpshared(&mutex_attr, PTHREAD_PROCESS_SHARED);
     pthread_mutex_init(&sharedMemHeader->mutex, &mutex_attr);
-    pthread_mutex_lock(&sharedMemHeader.header->mutex);
+    pthread_mutex_lock(&sharedMemHeader->mutex);
 
     //ecrit le header dans la memoire partage
     
-    sharedMemHeader->largeur = headerInfo->largeur;
-    sharedMemHeader->hauteur = headerInfo->hauteur;
-    sharedMemHeader->frameWriter = 1;
+    sharedMemHeader->largeur = headerInfos->largeur;
+    sharedMemHeader->hauteur = headerInfos->hauteur;
+    sharedMemHeader->frameWriter = 0;
     sharedMemHeader->frameReader = 0;
-    sharedMemHeader->fps = headerInfo->fps;
-    sharedMemHeader->canaux = headerInfo->canaux;
+    sharedMemHeader->fps = headerInfos->fps;
+    sharedMemHeader->canaux = headerInfos->canaux;
 
     //init la struct qui sert a communique avec la zone partage
-    zone->data = (unsigned char*)(sharedMem + sizeof(memPartageHeader));
+    zone->data = (unsigned char*)((uint8_t*)sharedMem + sizeof(memPartageHeader));
     zone->header = sharedMemHeader;
     zone->copieCompteur = zone->header->frameReader;                                       
     zone->tailleDonnees = taille;
@@ -73,7 +73,7 @@ int initMemoirePartageeEcrivain(const char* identifiant,
 
 // Appelé par le lecteur pour se mettre en attente d'un résultat
 int attenteLecteur(struct memPartage *zone){
-    while(zone->header->frameWriter == zone->copieCompteur)
+    while(zone->header->frameWriter == zone->copieCompteur);
     return pthread_mutex_lock(&zone->header->mutex);
 }
 
@@ -87,6 +87,6 @@ int attenteLecteurAsync(struct memPartage *zone){
 
 // Appelé par l'écrivain pour se mettre en attente de la lecture du résultat précédent par un lecteur
 int attenteEcrivain(struct memPartage *zone){
-    while(zone->header->frameReader == zone->copieCompteur)
+    while(zone->header->frameReader == zone->copieCompteur);
     return pthread_mutex_lock(&zone->header->mutex);
 }

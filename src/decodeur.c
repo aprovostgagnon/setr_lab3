@@ -13,9 +13,11 @@
 
 // Définition de diverses structures pouvant vous être utiles pour la lecture d'un fichier ULV
 #define HEADER_SIZE 4
-#define VIDEO_PATH "/home/pi/projects/laboratoire3"
-#define MEMOIRE_SETR "/BassinMemoire"
 #define OFFSET_FIRST_IMAGE 20
+#define DEFAULT_ORDO "NORT\0"
+#define DEFAULT_DEADLINE_OPTION "1000,1000,1000\0"
+#define VIDEO_PATH   "/home/pi/projects/laboratoire3\0"
+#define MEMOIRE_SETR   "/BassinMemoire\0"
 const char header[] = "SETR";
 
 struct videoInfos{
@@ -46,16 +48,14 @@ struct videoInfos{
 int main(int argc, char* argv[]){
     
     int debug = 0;
-    char *flux_entree;
-    char *flux_sortie;
-    char *type_ord;
-    char *options;
-    int numberOfOptions = 0;
-    int default_option = 0;
+    char flux_entree[100]= VIDEO_PATH;
+    char flux_sortie[100] = MEMOIRE_SETR;
+    char type_ord[100] = DEFAULT_ORDO;
+    char options[100] = DEFAULT_DEADLINE_OPTION ;
     struct sched_attr ord;
-    char c;
+    int c;
 
-    while (c = getopt(argc, argv, "ad::s:") != -1) {
+    while ((c = getopt(argc, argv, "ad::s:")) != -1) {
         switch (c) {
 
         case 'a': 
@@ -63,13 +63,11 @@ int main(int argc, char* argv[]){
             break;
 
         case 'd': 
-            default_option = 1;
-            options = optarg;
-            numberOfOptions++; 
+            strcpy(options, optarg); 
             break;
         
         case 's':
-            type_ord = optarg;
+            strcpy(type_ord, optarg);
             break;
 
         default:
@@ -82,8 +80,8 @@ int main(int argc, char* argv[]){
     // Traite les différentes options
     if (debug == 0) {
         if (argc - optind  != 2) {
-            flux_entree = argv[optind];
-            flux_sortie = argv[optind + 1];
+            strcpy(flux_entree,argv[optind]);
+            strcpy(flux_sortie,argv[optind+1]);
         } else {
 
             fprintf(stderr, "Le decodeur a besoin du  fichier video d'entree et le flux de sortie \n");
@@ -91,7 +89,7 @@ int main(int argc, char* argv[]){
         }
 
         // Verifie type ordonnancement
-        sched_getattr(0, &ord,0);
+        sched_getattr(0, &ord,sizeof(struct sched_attr),0);
         if(strcmp(type_ord, "NORT\0")){
             // default setting
         } else if(strcmp(type_ord, "RR\0")) {
@@ -101,26 +99,15 @@ int main(int argc, char* argv[]){
         } else if (strcmp(type_ord, "DEADLINE\0")){
             ord.sched_policy = SCHED_DEADLINE;
             ord.sched_priority = -101;
-            if (default_option == 1){
-                ord.sched_runtime = (__u64)atoi(strtok(options,",")); 
-                ord.sched_deadline = (__u64)atoi(strtok(options,","));
-                ord.sched_period = (__u64)atoi(strtok(options,","));
-            } else {
-                // ord.sched_runtime = (__u64); 
-                // ord.sched_deadline = (__u64);
-                // ord.sched_period = (__u64);
-            }
+            ord.sched_runtime = (__u64)atoi(strtok(options,",")); 
+            ord.sched_deadline = (__u64)atoi(strtok(options,","));
+            ord.sched_period = (__u64)atoi(strtok(options,","));
         } else {
-            printf("NO BUENO ORDONNANCEMENT")
+            printf("NO BUENO ORDONNANCEMENT");
             exit(EXIT_FAILURE);
             
         }
         sched_setattr(0, &ord, 0);           
-    } else { //  Parametres par default 
-        flux_entree = VIDEO_PATH;
-        flux_sortie = MEMOIRE_SETR;
-        type_ord = "NORT\0";
-         
     }
 
     // Écrivez le code de décodage et d'envoi sur la zone mémoire partagée ici!
@@ -150,7 +137,7 @@ int main(int argc, char* argv[]){
     memcpy(&vInfos.hauteur,videoInMem+8 ,4);
     memcpy(&vInfos.canaux, videoInMem+12,4);
     memcpy(&vInfos.fps, videoInMem+16,4);
-    size_t tailleFenetre = vInfos.largeur * vInfos.hauteur * vInfos.canaux
+    size_t tailleFenetre = vInfos.largeur * vInfos.hauteur * vInfos.canaux;
     prepareMemoire(0, tailleFenetre);
 
     // Memoire initialisation
@@ -169,17 +156,15 @@ int main(int argc, char* argv[]){
     // On se place a un offset de 20 par rapport au debut du fichier
 
     uint32_t index = OFFSET_FIRST_IMAGE;
-    uint32_t indexLecteur = 0 ;
-    int donneeImage;
     while (1){
 
-        if (index >= statusVideo.st_size - 4) { // Verification taille espace partagée??
-            index = OFFSET_FIRST_IMAGE // WHY
+        if (index >= (uint32_t) statusVideo.st_size - 4) { // Verification si on a depasse la derniere frame
+            index = OFFSET_FIRST_IMAGE;// retourne au debut de la video (premiere frame)
         }
 
         // PROCHAINE IMAGE
         uint32_t tailleImage;
-        memcpy(&tailleImage, vInfos + index, 4); // copie taille image
+        memcpy(&tailleImage, videoInMem + index, 4); // copie taille image
         index +=4;
 
 
@@ -192,7 +177,7 @@ int main(int argc, char* argv[]){
         int comp = 0;
 
         unsigned char* fenetre = 
-        jpgd::decompress_jpeg_image_from_memory((const unsigned char*)(videoInMem+index+4), tailleImage
+        jpgd::decompress_jpeg_image_from_memory((const unsigned char*)(videoInMem+index), tailleImage,
         &larg, &haut,&comp,vInfos.canaux);
 
         // informations memoire partagee MAJ
@@ -200,26 +185,26 @@ int main(int argc, char* argv[]){
         memP.header->hauteur = haut;
         memP.header->canaux = comp;
 
-        if ((larg != vInfos.largeur) || (haut != vInfos.hauteur) || (comp != vInfos.canaux)){
-            printf("UNA COZA NO BUENO");
+        if ((larg != (int)vInfos.largeur) || (haut != (int)vInfos.hauteur) || (comp != (int)vInfos.canaux)){
+            printf("UNA COZA NO BUENO\n");
             exit(EXIT_FAILURE);
         }
 
         // On peut copier l'image puis liberer la memoire
         // Calcul de la taille
         uint32_t taille = larg*haut*comp;
-        memcpy(memP.donneeImage, fenetre, taille);
+        memcpy(memP.data, fenetre, taille);
         tempsreel_free(fenetre);
 
         // Liberer mutex pthread_mutex_t mutex;
         // Incrementer index ecrivain
         index += tailleImage;
-        indexLecteur = memP.header->frameReader;
-        memP.frameWriter++;
+        memP.copieCompteur = memP.header->frameReader;
+        memP.header->frameWriter++;
         pthread_mutex_unlock(&memP.header->mutex);
 
-        // Attendre lecteur
-        while(indexLecteur == memP.header->frameReader);
+        // Attendre que le lecteur lit une frame
+        while(memP.copieCompteur == memP.header->frameReader);
         // On peut acquerir le mutex avant de recommencer la boucle
         pthread_mutex_lock(&memP.header->mutex); 
     }
