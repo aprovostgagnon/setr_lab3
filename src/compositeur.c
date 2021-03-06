@@ -61,6 +61,8 @@
 #include "commMemoirePartagee.h"
 #include "utils.h"
 
+#define DEFAULT_FLUX_ENTREE "/BassinMemoire"
+double frames_cnt[] = {0, 0, 0, 0};
 
 // Fonction permettant de récupérer le temps courant sous forme double
 double get_time()
@@ -177,6 +179,8 @@ void ecrireImage(const int position, const int total,
 	if (ioctl(fbfd, FBIOPAN_DISPLAY, vinfoPtr)) {
 		printf("Erreur lors du changement de buffer (double buffering inactif)!\n");
 	}
+
+	frames_cnt[position]++;
 }
 
 
@@ -185,8 +189,97 @@ int main(int argc, char* argv[])
 {
     // TODO
     // ÉCRIVEZ ICI votre code d'analyse des arguments du programme et d'initialisation des zones mémoire partagées
-    int nbrActifs;      // Après votre initialisation, cette variable DOIT contenir le nombre de flux vidéos actifs (de 1 à 4 inclusivement).
+	int debug = 0;
+	struct memPartage zone[4];
+    char *type_ord;
+    char *options;
+    int numberOfOptions = 0;
+    int default_option = 0;
+    struct sched_attr ord;
+	int nbrActifs;      // Après votre initialisation, cette variable DOIT contenir le nombre de flux vidéos actifs (de 1 à 4 inclusivement).
+	size_t max_size = 0;
+	
 
+
+
+    while (c = getopt(argc, argv, "ad::s:") != -1) {
+        switch (c) {
+
+        case 'a': 
+            debug = 1; 
+            break;
+
+        case 'd': 
+            default_option = 1;
+            options = optarg;
+            numberOfOptions++; 
+            break;
+        
+        case 's':
+            type_ord = optarg;
+            break;
+
+        default:
+            printf("NOOB\n");
+            fprintf(stderr, "Option invalide\n");
+            exit(EXIT_FAILURE);
+        }
+    
+    }
+    // Traite les différentes options
+    if (debug == 0) {
+		nbrActifs = argc - optind;
+
+        if (nbrActifs < 1 && nbrActifs < 5) {
+            for(int i = 0; i < nbrActifs; i++)
+				if(initMemoirePartageeLecteur(argv[i+optind], &zone[i]) != 0)
+           			exit(EXIT_FAILURE);
+
+				if (zone[i].tailleDonnees > max_size) 
+            		max_size = zone[i].tailleDonnees;
+        } else {
+            fprintf(stderr, "Le compositeur a besoin d'au moins un flux d'entree et un maximum de 4 flux d'entree\n");
+            exit(EXIT_FAILURE);
+        }
+
+
+        // Verifie type ordonnancement
+        sched_getattr(0, &ord,0);
+        if(strcmp(type_ord, "NORT\0")){
+            // default setting
+        } else if(strcmp(type_ord, "RR\0")) {
+            ord.sched_policy = SCHED_RR;
+        } else if (strcmp(type_ord, "FIFO\0")) {
+            ord.sched_policy = SCHED_FIFO;
+        } else if (strcmp(type_ord, "DEADLINE\0")){
+            ord.sched_policy = SCHED_DEADLINE;
+            ord.sched_priority = -101;
+            if (default_option == 1){
+                ord.sched_runtime = (__u64)atoi(strtok(options,",")); 
+                ord.sched_deadline = (__u64)atoi(strtok(options,","));
+                ord.sched_period = (__u64)atoi(strtok(options,","));
+            } else {
+                // ord.sched_runtime = (__u64); 
+                // ord.sched_deadline = (__u64);
+                // ord.sched_period = (__u64);
+            }
+        } else {
+            printf("NO BUENO ORDONNANCEMENT")
+            exit(EXIT_FAILURE);
+        }
+        sched_setattr(0, &ord, 0);
+    } else { //  Parametres par default 
+		initMemoirePartageeLecteur(DEFAULT_FLUX_ENTREE, &zone[0])
+		max_size = zone[0].tailleDonnees;
+        type_ord = "NORT\0";
+    }
+
+	prepareMemoire(max_size, 0);
+
+	/*
+	* END OF MY CODE
+	*/
+   
     // Initialisation des structures nécessaires à l'affichage
     long int screensize = 0;
     // Ouverture du framebuffer
@@ -249,7 +342,23 @@ int main(int argc, char* argv[])
 		return -1;
     }
 
+	/*
+	* MY CODE HERE
+	*/
+	size_t taille
+	double framePeriode[4];
+	double lastFrameTime[4];
+	double currentTime = get_time();
+	double lastFPSPooling = currentTime;
+	double deltaTime = 0;
 
+	for(int i = 0; i < nbrActifs; i++){
+		framePeriode[i] = (double) (1.0 / zone[i].header->fps);
+		lastFrameTime[i] = get_time();
+	}
+
+	FILE *fileStat = fopen("stats.txt", "w+");
+	fclose(fileStat);
     while(1){
             // Boucle principale du programme
             // TODO
@@ -265,18 +374,51 @@ int main(int argc, char* argv[])
             // 427x240 (voir le commentaire en haut du document).
         
             // Exemple d'appel à ecrireImage (n'oubliez pas de remplacer les arguments commençant par A_REMPLIR!)
-            ecrireImage(A_REMPLIR_POSITION_ACTUELLE, 
-                        nbrActifs, 
-                        fbfd, 
-                        fbp, 
-                        vinfo.xres, 
-                        vinfo.yres, 
-                        &vinfo, 
-                        finfo.line_length,
-                        A_REMPLIR_DONNEES_DE_LA_TRAME,
-                        A_REMPLIR_LARGEUR_DE_LA_TRAME,
-                        A_REMPLIR_HAUTEUR_DE_LA_TRAME,
-                        A_REMPLIR_NOMBRECANAUX_DANS_LA_TRAME);
+
+			// Ecrit le FPS de tous les flux dans le fichier stat.txt
+			currentTime = get_time();
+			deltaTime = currentTime - lastFPSPooling
+			if(deltaTime > 1){ //update the fps count in stat.txt
+
+				fileStat = fopen("stats.txt", "a");
+				if (fileStat == NULL) {
+					printf("Erreur a l'ouverture du fichier de log.\n");
+				}
+
+				fseek(fileStat, 0, SEEK_END);
+				for (int i = 0; i < nbrActifs; i++) {
+					fprintf(fileStat, "(%d) flux %d: %f\n", currentTime, i, frames_cnt[i] / deltaTime);
+					frames_count[i] = 0;
+            	}
+				fclose(fileStat);
+			}
+
+			// Rafraichi l'image de chaque flux sur lecran si celui-ci est du a etre rafrachire
+			// en fonction de son targeted FPS
+			for(int i = 0; i < nbrActifs; i++){
+
+				if(get_time() - lastFrameTime[i] > framePeriode[i]){
+				
+					if(attenteLecteurAsync(&zones[i]) != 0){				
+						ecrireImage(i, 
+									nbrActifs, 
+									fbfd, 
+									fbp, 
+									vinfo.xres, 
+									vinfo.yres, 
+									&vinfo, 
+									finfo.line_length,
+									zone[i].data,
+									zone[i].header->largeur,
+									zone[i].header->hauteur,
+									zone[i].header->canaux);
+
+						lastFrameTime[i] = get_time();
+						zones[i].header->frameReader++;
+						pthread_mutex_unlock(&zones[i].header->mutex);
+					}
+				}
+			}
     }
 
 

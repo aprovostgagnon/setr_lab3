@@ -53,7 +53,7 @@ int main(int argc, char* argv[]){
     int numberOfOptions = 0;
     int default_option = 0;
     struct sched_attr ord;
-
+    char c;
 
     while (c = getopt(argc, argv, "ad::s:") != -1) {
         switch (c) {
