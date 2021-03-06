@@ -15,15 +15,16 @@ int initMemoirePartageeLecteur(const char* identifiant,
     //Optient la memoire partage
     void *sharedMem = mmap(NULL, sharedMemStat.st_size, PROT_READ | PROT_WRITE,MAP_SHARED, zone->fd, 0);
 
-    //Attend le que le compte de l'ecrivaint soit de 1
-    while(zone->header->frameWriter == 0)
-
     //init la struct qui sert a communique avec la zone partage
     zone->data = (unsigned char*)((uint8_t*)sharedMem + sizeof(memPartageHeader));
     zone->header = (memPartageHeader*)sharedMem;
     zone->copieCompteur = zone->header->frameWriter;                                                // A voir
-    zone->header = (memPartageHeader*) sharedMem;
     zone->tailleDonnees = sharedMemStat.st_size - sizeof(memPartageHeader);
+
+    //Attend le que le compte de l'ecrivaint soit de 1
+    while(zone->header->frameWriter == 0)
+
+
 
     //Attendre le mutex
     pthread_mutex_lock(&zone->header->mutex);

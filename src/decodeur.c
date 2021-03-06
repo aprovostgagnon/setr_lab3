@@ -8,7 +8,7 @@
 #include "allocateurMemoire.h"
 #include "commMemoirePartagee.h"
 #include "utils.h"
-
+#include <getopt.h>
 #include "jpgd.h"
 
 // Définition de diverses structures pouvant vous être utiles pour la lecture d'un fichier ULV
@@ -16,7 +16,7 @@
 #define OFFSET_FIRST_IMAGE 20
 #define DEFAULT_ORDO "NORT\0"
 #define DEFAULT_DEADLINE_OPTION "1000,1000,1000\0"
-#define VIDEO_PATH   "/home/pi/projects/laboratoire3\0"
+#define VIDEO_PATH   "/home/pi/projects/laboratoire3/01_ToS.ulv"
 #define MEMOIRE_SETR   "/BassinMemoire\0"
 const char header[] = "SETR";
 
@@ -54,8 +54,13 @@ int main(int argc, char* argv[]){
     char options[100] = DEFAULT_DEADLINE_OPTION ;
     struct sched_attr ord;
     int c;
+    int option_index = 0;
 
-    while ((c = getopt(argc, argv, "ad::s:")) != -1) {
+    static struct option long_options[] = {
+            {"debug", no_argument, 0,  'a'}
+    };
+
+    while ((c = getopt_long(argc, argv, "a::d::s:",long_options,&option_index)) != -1) {
         switch (c) {
 
         case 'a': 
@@ -128,7 +133,12 @@ int main(int argc, char* argv[]){
     // void *mmap(void *addr, size_t length, int prot, int flags,int fd, off_t offset);
     struct stat statusVideo;
     fstat (fileInfo, &statusVideo);
-    const char *videoInMem = (char*)mmap(NULL, statusVideo.st_size, PROT_READ,MAP_POPULATE, fileInfo, 0);
+    const char *videoInMem = (char*)mmap(NULL, statusVideo.st_size, PROT_READ,MAP_POPULATE | MAP_PRIVATE, fileInfo, 0);
+
+    if(strncmp(header, videoInMem, 4) != 0){
+        printf("wrong video format\n");
+        exit(1);
+    }
 
     // Copier informations contenu dans format ULV
     // void * memcpy ( void * destination, const void * source, size_t num );

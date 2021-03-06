@@ -25,7 +25,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <fcntl.h>
-
+#include <getopt.h>
 #include <stropts.h>
 
 #include <sys/time.h>
@@ -200,10 +200,14 @@ int main(int argc, char* argv[])
 	int nbrActifs;      // Après votre initialisation, cette variable DOIT contenir le nombre de flux vidéos actifs (de 1 à 4 inclusivement).
 	size_t max_size = 0;
 	int c;
+    int option_index = 0;
+
+    static struct option long_options[] = {
+            {"debug", no_argument, 0,  'a'}
+    };
 
 
-
-    while ((c = getopt(argc, argv, "a::d::s:")) != -1) {
+    while ((c = getopt_long(argc, argv, "a::d::s:",long_options,&option_index)) != -1) {
         switch (c) {
 
         case 'a': 
@@ -390,7 +394,7 @@ int main(int argc, char* argv[])
 			// en fonction de son targeted FPS
 			for(int i = 0; i < nbrActifs; i++){
 
-				if(get_time() - lastFrameTime[i] > framePeriode[i]){
+				if(currentTime - lastFrameTime[i] > framePeriode[i]){
 				
 					if(attenteLecteurAsync(&zone[i]) != 0){				
 						ecrireImage(i, 
@@ -406,7 +410,7 @@ int main(int argc, char* argv[])
 									zone[i].header->hauteur,
 									zone[i].header->canaux);
 
-						lastFrameTime[i] = get_time();
+						lastFrameTime[i] = currentTime;
 						zone[i].header->frameReader++;
 						pthread_mutex_unlock(&zone[i].header->mutex);
 					}
