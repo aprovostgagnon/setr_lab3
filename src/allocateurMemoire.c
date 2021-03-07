@@ -43,7 +43,6 @@ void tempsreel_free(void* ptr){
     for(int i = 0; i < NB_OF_BLOCK; i++){
         if(memBlocks[i] == ptr){
             blockState[i] = 0;
-            free(ptr);
             return;
         }            
     }

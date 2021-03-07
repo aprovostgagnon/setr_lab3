@@ -61,7 +61,7 @@
 #include "commMemoirePartagee.h"
 #include "utils.h"
 
-#define DEFAULT_FLUX_ENTREE "/BassinMemoire\0"
+#define DEFAULT_FLUX_ENTREE "/lab3\0"
 #define DEFAULT_ORDO "NORT\0"
 #define DEFAULT_DEADLINE_OPTION "1000,1000,1000\0"
 double frames_cnt[] = {0, 0, 0, 0};
@@ -197,7 +197,7 @@ int main(int argc, char* argv[])
     char type_ord[100] = DEFAULT_ORDO;
     char options[100] = DEFAULT_DEADLINE_OPTION ;
     struct sched_attr ord;
-	int nbrActifs;      // Après votre initialisation, cette variable DOIT contenir le nombre de flux vidéos actifs (de 1 à 4 inclusivement).
+	int nbrActifs = 1;      // Après votre initialisation, cette variable DOIT contenir le nombre de flux vidéos actifs (de 1 à 4 inclusivement).
 	size_t max_size = 0;
 	int c;
     int option_index = 0;
@@ -232,19 +232,19 @@ int main(int argc, char* argv[])
     // Traite les différentes options
     if (debug == 0) {
 		nbrActifs = argc - optind;
+        if (nbrActifs >= 1 && nbrActifs < 5) {
 
-        if (nbrActifs < 1 && nbrActifs < 5) {
-            for(int i = 0; i < nbrActifs; i++){
+			for(int i = 0; i < nbrActifs; i++){
 				if(initMemoirePartageeLecteur(argv[i+optind], &zone[i]) != 0)
-           			exit(EXIT_FAILURE);
+					exit(EXIT_FAILURE);
 
 				if (zone[i].tailleDonnees > max_size) 
-            		max_size = zone[i].tailleDonnees;
+					max_size = zone[i].tailleDonnees;
 			}
-        } else {
-            fprintf(stderr, "Le compositeur a besoin d'au moins un flux d'entree et un maximum de 4 flux d'entree\n");
-            exit(EXIT_FAILURE);
-        }
+		} else{
+			fprintf(stderr, "Le compositeur a besoin d'au moins un flux d'entree et un maximum de 4 flux d'entree\n");
+			exit(EXIT_FAILURE);
+		}
 
         // Verifie type ordonnancement
         sched_getattr(0, &ord,sizeof(struct sched_attr),0);
@@ -266,11 +266,13 @@ int main(int argc, char* argv[])
         }
         sched_setattr(0, &ord, 0);
 
-    } else { //  Parametres par default 
-		initMemoirePartageeLecteur(DEFAULT_FLUX_ENTREE, &zone[0]);
-		max_size = zone[0].tailleDonnees;
-		nbrActifs = 1;
     }
+	else{
+		if( initMemoirePartageeLecteur(DEFAULT_FLUX_ENTREE, &zone[0]) != 0)
+			exit(EXIT_FAILURE);		
+	}
+
+
 
 	prepareMemoire(max_size, 0);
 
@@ -384,10 +386,11 @@ int main(int argc, char* argv[])
 
 				fseek(fileStat, 0, SEEK_END);
 				for (int i = 0; i < nbrActifs; i++) {
-					fprintf(fileStat, "(%f) flux %d: %f\n", currentTime, i, frames_cnt[i] / deltaTime);
+					fprintf(fileStat, "(%f) flux %d: %f\n", currentTime, i+1, frames_cnt[i] / deltaTime);
 					frames_cnt[i] = 0;
             	}
 				fclose(fileStat);
+				lastFPSPooling = currentTime;
 			}
 
 			// Rafraichi l'image de chaque flux sur lecran si celui-ci est du a etre rafrachire
@@ -395,8 +398,11 @@ int main(int argc, char* argv[])
 			for(int i = 0; i < nbrActifs; i++){
 
 				if(currentTime - lastFrameTime[i] > framePeriode[i]){
-				
-					if(attenteLecteurAsync(&zone[i]) != 0){				
+					if(attenteLecteurAsync(&zone[i]) == 0){	
+
+						uint32_t largeur = zone[i].header->largeur;
+						uint32_t hauteur = zone[i].header->hauteur;
+						uint32_t canaux = zone[i].header->canaux;
 						ecrireImage(i, 
 									nbrActifs, 
 									fbfd, 
@@ -406,12 +412,13 @@ int main(int argc, char* argv[])
 									&vinfo, 
 									finfo.line_length,
 									zone[i].data,
-									zone[i].header->largeur,
-									zone[i].header->hauteur,
-									zone[i].header->canaux);
+									largeur,
+									hauteur,
+									canaux);
 
 						lastFrameTime[i] = currentTime;
-						zone[i].header->frameReader++;
+						zone[i].copieCompteur = zone[i].header->frameWriter;
+						zone[i].header->frameReader +=1;						
 						pthread_mutex_unlock(&zone[i].header->mutex);
 					}
 				}

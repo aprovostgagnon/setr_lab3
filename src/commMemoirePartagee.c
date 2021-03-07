@@ -15,19 +15,19 @@ int initMemoirePartageeLecteur(const char* identifiant,
     //Optient la memoire partage
     void *sharedMem = mmap(NULL, sharedMemStat.st_size, PROT_READ | PROT_WRITE,MAP_SHARED, zone->fd, 0);
 
+
     //init la struct qui sert a communique avec la zone partage
     zone->data = (unsigned char*)((uint8_t*)sharedMem + sizeof(memPartageHeader));
-    zone->header = (memPartageHeader*)sharedMem;
-    zone->copieCompteur = zone->header->frameWriter;                                                // A voir
+    zone->header = (memPartageHeader*)sharedMem;                                               // A voir
     zone->tailleDonnees = sharedMemStat.st_size - sizeof(memPartageHeader);
+    zone->copieCompteur = 0;
 
-    //Attend le que le compte de l'ecrivaint soit de 1
-    while(zone->header->frameWriter == 0)
+    // //Attend le que le compte de l'ecrivaint soit de 1
+    while(zone->header->frameWriter == 0);
+     
 
-
-
-    //Attendre le mutex
-    pthread_mutex_lock(&zone->header->mutex);
+    // //Attendre le mutex
+    // pthread_mutex_lock(&zone->header->mutex);
 
     return 0;
 }
@@ -66,7 +66,7 @@ int initMemoirePartageeEcrivain(const char* identifiant,
     //init la struct qui sert a communique avec la zone partage
     zone->data = (unsigned char*)((uint8_t*)sharedMem + sizeof(memPartageHeader));
     zone->header = sharedMemHeader;
-    zone->copieCompteur = zone->header->frameReader;                                       
+    zone->copieCompteur = 0;                                       
     zone->tailleDonnees = taille;
 
     return 0;
@@ -81,7 +81,7 @@ int attenteLecteur(struct memPartage *zone){
 // Fonction spéciale similaire à attenteLecteur, mais asynchrone : cette fonction ne bloque jamais.
 // Cela est utile pour le compositeur, qui ne doit pas bloquer l'entièreté des flux si un seul est plus lent.
 int attenteLecteurAsync(struct memPartage *zone){
-    if(zone->header->frameWriter == zone->header->frameReader)
+    if(zone->header->frameWriter == zone->copieCompteur)
         return 1;
     return pthread_mutex_trylock(&zone->header->mutex); //return 0 si le lock est libre
 }

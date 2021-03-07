@@ -16,8 +16,8 @@
 #define OFFSET_FIRST_IMAGE 20
 #define DEFAULT_ORDO "NORT\0"
 #define DEFAULT_DEADLINE_OPTION "1000,1000,1000\0"
-#define VIDEO_PATH   "/home/pi/projects/laboratoire3/01_ToS.ulv"
-#define MEMOIRE_SETR   "/BassinMemoire\0"
+#define VIDEO_PATH   "/home/pi/projects/laboratoire3/02_Sintel.ulv"
+#define MEMOIRE_SETR   "/lab3\0"
 const char header[] = "SETR";
 
 struct videoInfos{
@@ -59,7 +59,6 @@ int main(int argc, char* argv[]){
     static struct option long_options[] = {
             {"debug", no_argument, 0,  'a'}
     };
-
     while ((c = getopt_long(argc, argv, "a::d::s:",long_options,&option_index)) != -1) {
         switch (c) {
 
@@ -84,7 +83,7 @@ int main(int argc, char* argv[]){
     }
     // Traite les différentes options
     if (debug == 0) {
-        if (argc - optind  != 2) {
+        if (argc - optind  == 2) {
             strcpy(flux_entree,argv[optind]);
             strcpy(flux_sortie,argv[optind+1]);
         } else {
@@ -92,7 +91,6 @@ int main(int argc, char* argv[]){
             fprintf(stderr, "Le decodeur a besoin du  fichier video d'entree et le flux de sortie \n");
             exit(EXIT_FAILURE);
         }
-
         // Verifie type ordonnancement
         sched_getattr(0, &ord,sizeof(struct sched_attr),0);
         if(strcmp(type_ord, "NORT\0")){
@@ -122,7 +120,8 @@ int main(int argc, char* argv[]){
     
     int fileInfo = open(flux_entree,O_RDONLY);
     if  (fileInfo < 0){
-        printf("OPEN WRONG");
+
+        printf("OPEN WRONG file : %s\n",flux_entree );
         exit(EXIT_FAILURE);
     }
 
@@ -210,13 +209,11 @@ int main(int argc, char* argv[]){
         // Incrementer index ecrivain
         index += tailleImage;
         memP.copieCompteur = memP.header->frameReader;
-        memP.header->frameWriter++;
+        memP.header->frameWriter +=1;
         pthread_mutex_unlock(&memP.header->mutex);
 
-        // Attendre que le lecteur lit une frame
-        while(memP.copieCompteur == memP.header->frameReader);
-        // On peut acquerir le mutex avant de recommencer la boucle
-        pthread_mutex_lock(&memP.header->mutex); 
+        // Attendre que le lecteur lit une frame et libere le mutex
+        attenteEcrivain(&memP); 
     }
 
 
