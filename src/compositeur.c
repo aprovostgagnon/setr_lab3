@@ -61,7 +61,7 @@
 #include "commMemoirePartagee.h"
 #include "utils.h"
 
-#define DEFAULT_FLUX_ENTREE "/lab3\0"
+#define DEFAULT_FLUX_ENTREE "/chewy\0"
 #define DEFAULT_ORDO "NORT\0"
 #define DEFAULT_DEADLINE_OPTION "1000,1000,1000\0"
 double frames_cnt[] = {0, 0, 0, 0};
@@ -235,9 +235,11 @@ int main(int argc, char* argv[])
         if (nbrActifs >= 1 && nbrActifs < 5) {
 
 			for(int i = 0; i < nbrActifs; i++){
+				printf("compositeur: in%i = %s \n",i+1,argv[i+optind]);
 				if(initMemoirePartageeLecteur(argv[i+optind], &zone[i]) != 0)
 					exit(EXIT_FAILURE);
-
+				// Pour que le trylock dans attenteLecteurAsync ne produise pas de deadlock	
+				pthread_mutex_unlock(&zone[i].header->mutex);
 				if (zone[i].tailleDonnees > max_size) 
 					max_size = zone[i].tailleDonnees;
 			}
@@ -269,12 +271,14 @@ int main(int argc, char* argv[])
     }
 	else{
 		if( initMemoirePartageeLecteur(DEFAULT_FLUX_ENTREE, &zone[0]) != 0)
-			exit(EXIT_FAILURE);		
+			exit(EXIT_FAILURE);	
+		// Pour que le trylock dans attenteLecteurAsync ne produise pas de deadlock	
+		pthread_mutex_unlock(&zone[0].header->mutex);	
 	}
 
 
 
-	prepareMemoire(max_size, 0);
+	prepareMemoire(5*max_size, 0);
 
 	/*
 	* END OF MY CODE
@@ -398,8 +402,7 @@ int main(int argc, char* argv[])
 			for(int i = 0; i < nbrActifs; i++){
 
 				if(currentTime - lastFrameTime[i] > framePeriode[i]){
-					if(attenteLecteurAsync(&zone[i]) == 0){	
-
+					if(attenteLecteurAsync(&zone[i]) == 0){		
 						uint32_t largeur = zone[i].header->largeur;
 						uint32_t hauteur = zone[i].header->hauteur;
 						uint32_t canaux = zone[i].header->canaux;
@@ -414,11 +417,10 @@ int main(int argc, char* argv[])
 									zone[i].data,
 									largeur,
 									hauteur,
-									canaux);
-
-						lastFrameTime[i] = currentTime;
-						zone[i].copieCompteur = zone[i].header->frameWriter;
-						zone[i].header->frameReader +=1;						
+									canaux);		
+						zone[i].header->frameReader += 1;
+						zone[i].copieCompteur = zone[i].header->frameWriter;						
+						lastFrameTime[i] = currentTime;											
 						pthread_mutex_unlock(&zone[i].header->mutex);
 					}
 				}

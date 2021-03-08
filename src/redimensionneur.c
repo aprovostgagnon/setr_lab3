@@ -8,11 +8,11 @@
 #include "allocateurMemoire.h"
 #include "commMemoirePartagee.h"
 #include "utils.h"
-
+#include <getopt.h>
 #define DEFAULT_ORDO "NORT"
 #define DEFAULT_DEADLINE_OPTION "1000,1000,1000"
-#define DEFAULT_IMAGE_IN "/redimesionIn"
-#define DEFAULT_IMAGE_OUT "/redimesionOut"
+#define DEFAULT_IMAGE_IN "/peanut"
+#define DEFAULT_IMAGE_OUT "/chewy"
 
 int main(int argc, char* argv[]){
     
@@ -22,13 +22,18 @@ int main(int argc, char* argv[]){
         char imageOut [100] = DEFAULT_IMAGE_OUT;
         char type_ord[100] = DEFAULT_ORDO;
         char options[100] = DEFAULT_DEADLINE_OPTION ;
-        int largeur = 1;
-        int hauteur = 1;
+        int largeur = 427;
+        int hauteur = 240;
         int methode = 0;
         struct sched_attr ord;
         int c;
+        int option_index = 0;
 
-        while ((c = getopt(argc, argv, "awhs:d::m:")) != -1) {
+        static struct option long_options[] = {
+                {"debug", no_argument, 0,  'a'}
+        };
+
+        while ((c = getopt_long(argc, argv, "aw:h:s:d::m:",long_options,&option_index)) != -1) {
         switch (c) {
 
         case 'a': 
@@ -65,7 +70,7 @@ int main(int argc, char* argv[]){
 
     // Traite les différentes options
     if (debug == 0) {
-        if (argc - optind  != 2) {
+        if (argc - optind  == 2) {
             strcpy(imageIn,  argv[optind]);
             strcpy(imageOut,argv[optind + 1]);
         } else {
@@ -97,6 +102,7 @@ int main(int argc, char* argv[]){
         sched_setattr(0, &ord, 0);           
     }
 
+
     // Écrivez le code permettant de redimensionner une image (en utilisant les fonctions précodées
     // dans utils.c, celles commençant par "resize"). Votre code doit lire une image depuis une zone 
     // mémoire partagée et envoyer le résultat sur une autre zone mémoire partagée.
@@ -107,7 +113,7 @@ int main(int argc, char* argv[]){
     struct memPartageHeader memPH;
 
     initMemoirePartageeLecteur(imageIn,&memImageIn);
-
+    
     memPH.frameWriter = 0;
     memPH.frameReader = 0;
     memPH.hauteur = hauteur;
@@ -116,19 +122,54 @@ int main(int argc, char* argv[]){
     memPH.canaux = memImageIn.header->canaux;
     
     // Preparation memoire & initialisation memoire ecrivain
-    prepareMemoire(memImageIn.tailleDonnees, hauteur*largeur*memImageIn.header->canaux);
-    //initMemoirePartageeEcrivain(imageOut, &memImageOut);
+    prepareMemoire(5*memImageIn.tailleDonnees, 5*hauteur*largeur*memImageIn.header->canaux);
 
-    int hauteur_in = memImageIn.header->hauteur;
-    int largeur_in = memImageIn.header->largeur;
-    int canaux_in = memImageIn.header->canaux;
+    // Creer la memoire partage out en fonction de l'agrandissement voulut
+    size_t sizeOut = largeur * hauteur * memImageIn.header->canaux;
+    if(initMemoirePartageeEcrivain(imageOut, &memImageOut,sizeOut,&memPH) != 0)
+        exit(1);
+    printf("redimensionneur: init mem ecrivain \n");
+    unsigned int hauteur_in = (unsigned int) memImageIn.header->hauteur;
+    unsigned int largeur_in = (unsigned int) memImageIn.header->largeur;
+    unsigned int canaux_in = (unsigned int) memImageIn.header->canaux;
 
     // Redimensionner grille en fonction du mode choisi
+    ResizeGrid res;
+    if (methode == 0) {
+        res= resizeNearestNeighborInit(hauteur, largeur, hauteur_in, largeur_in);
+    }  else if (methode== 1) {
+        res= resizeBilinearInit(hauteur, largeur, hauteur_in, largeur_in);
+    }  else {
+        fprintf(stderr, "not good methode\n");
+        exit(EXIT_FAILURE);
+    }    
     // Relacher memoire en lecture
     // Relacher memoire en ecriture
     // Attente signal ecrivain pour lire une modification
     // TODO
+    while(1){
+        
+        if (methode == 0) {
+            resizeNearestNeighbor(memImageIn.data, hauteur_in, largeur_in, memImageOut.data, hauteur, largeur ,res, canaux_in);
+        }
+        else {
+            resizeBilinear(memImageIn.data, hauteur_in, largeur_in, memImageOut.data, hauteur, largeur, res, canaux_in);
+        }
+        
+        memImageIn.copieCompteur = memImageIn.header->frameWriter;
+        memImageIn.header->frameReader++;
+        pthread_mutex_unlock(&memImageIn.header->mutex);
 
+        memImageOut.copieCompteur = memImageOut.header->frameReader;
+        memImageOut.header->frameWriter++;
+        pthread_mutex_unlock(&memImageOut.header->mutex);
+
+        attenteLecteur(&memImageIn);
+        
+
+        attenteEcrivain(&memImageOut);
+
+    }
 
 
 

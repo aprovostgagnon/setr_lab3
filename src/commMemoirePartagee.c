@@ -27,7 +27,7 @@ int initMemoirePartageeLecteur(const char* identifiant,
      
 
     // //Attendre le mutex
-    // pthread_mutex_lock(&zone->header->mutex);
+    pthread_mutex_lock(&zone->header->mutex);
 
     return 0;
 }
@@ -73,21 +73,23 @@ int initMemoirePartageeEcrivain(const char* identifiant,
 }
 
 // Appelé par le lecteur pour se mettre en attente d'un résultat
-int attenteLecteur(struct memPartage *zone){
+int __attribute__((optimize("O0"))) attenteLecteur(struct memPartage *zone){
+    
     while(zone->header->frameWriter == zone->copieCompteur);
     return pthread_mutex_lock(&zone->header->mutex);
 }
 
 // Fonction spéciale similaire à attenteLecteur, mais asynchrone : cette fonction ne bloque jamais.
 // Cela est utile pour le compositeur, qui ne doit pas bloquer l'entièreté des flux si un seul est plus lent.
-int attenteLecteurAsync(struct memPartage *zone){
+int __attribute__((optimize("O0"))) attenteLecteurAsync(struct memPartage *zone){
+    //printf("attenteLecteurAsync: copieCompteur: %i, rameWriter : %i\n",zone->copieCompteur,zone->header->frameWriter);
     if(zone->header->frameWriter == zone->copieCompteur)
         return 1;
     return pthread_mutex_trylock(&zone->header->mutex); //return 0 si le lock est libre
 }
 
 // Appelé par l'écrivain pour se mettre en attente de la lecture du résultat précédent par un lecteur
-int attenteEcrivain(struct memPartage *zone){
+int __attribute__((optimize("O0"))) attenteEcrivain(struct memPartage *zone){
     while(zone->header->frameReader == zone->copieCompteur);
     return pthread_mutex_lock(&zone->header->mutex);
 }

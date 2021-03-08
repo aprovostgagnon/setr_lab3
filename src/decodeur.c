@@ -16,8 +16,8 @@
 #define OFFSET_FIRST_IMAGE 20
 #define DEFAULT_ORDO "NORT\0"
 #define DEFAULT_DEADLINE_OPTION "1000,1000,1000\0"
-#define VIDEO_PATH   "/home/pi/projects/laboratoire3/02_Sintel.ulv"
-#define MEMOIRE_SETR   "/lab3\0"
+#define VIDEO_PATH   "/home/pi/projects/laboratoire3/480p/02_Sintel.ulv"
+#define MEMOIRE_SETR   "/peanut\0"
 const char header[] = "SETR";
 
 struct videoInfos{
@@ -46,7 +46,6 @@ struct videoInfos{
 
 
 int main(int argc, char* argv[]){
-    
     int debug = 0;
     char flux_entree[100]= VIDEO_PATH;
     char flux_sortie[100] = MEMOIRE_SETR;
@@ -87,7 +86,6 @@ int main(int argc, char* argv[]){
             strcpy(flux_entree,argv[optind]);
             strcpy(flux_sortie,argv[optind+1]);
         } else {
-
             fprintf(stderr, "Le decodeur a besoin du  fichier video d'entree et le flux de sortie \n");
             exit(EXIT_FAILURE);
         }
@@ -112,6 +110,7 @@ int main(int argc, char* argv[]){
         }
         sched_setattr(0, &ord, 0);           
     }
+    
 
     // Écrivez le code de décodage et d'envoi sur la zone mémoire partagée ici!
     // N'oubliez pas que vous pouvez utiliser jpgd::decompress_jpeg_image_from_memory()
@@ -124,7 +123,6 @@ int main(int argc, char* argv[]){
         printf("OPEN WRONG file : %s\n",flux_entree );
         exit(EXIT_FAILURE);
     }
-
     // Copier de tout le contenu fichier avec mmap
     // recuperer informations pertinentes à passer a mmap
     // int fstat(int fildes, struct stat *buf);
@@ -147,7 +145,7 @@ int main(int argc, char* argv[]){
     memcpy(&vInfos.canaux, videoInMem+12,4);
     memcpy(&vInfos.fps, videoInMem+16,4);
     size_t tailleFenetre = vInfos.largeur * vInfos.hauteur * vInfos.canaux;
-    prepareMemoire(0, tailleFenetre);
+    prepareMemoire(0, 10*tailleFenetre);
 
     // Memoire initialisation
     memPartage memP;
@@ -155,15 +153,14 @@ int main(int argc, char* argv[]){
     memPH.frameWriter = 0;
     memPH.frameReader = 0;
     memPH.hauteur = vInfos.hauteur;
-    memPH.hauteur = vInfos.largeur;
+    memPH.largeur = vInfos.largeur;
     memPH.canaux = vInfos.canaux;
     memPH.fps = vInfos.fps;
 
     initMemoirePartageeEcrivain(flux_sortie, &memP, tailleFenetre, &memPH);
-
     // Copie du fichier en memoire
     // On se place a un offset de 20 par rapport au debut du fichier
-
+    
     uint32_t index = OFFSET_FIRST_IMAGE;
     while (1){
 
@@ -172,8 +169,8 @@ int main(int argc, char* argv[]){
         }
 
         // PROCHAINE IMAGE
-        uint32_t tailleImage;
-        memcpy(&tailleImage, videoInMem + index, 4); // copie taille image
+        uint32_t tailleImageCompress;
+        memcpy(&tailleImageCompress, videoInMem + index, 4); // copie taille image
         index +=4;
 
 
@@ -186,7 +183,7 @@ int main(int argc, char* argv[]){
         int comp = 0;
 
         unsigned char* fenetre = 
-        jpgd::decompress_jpeg_image_from_memory((const unsigned char*)(videoInMem+index), tailleImage,
+        jpgd::decompress_jpeg_image_from_memory((const unsigned char*)(videoInMem+index), tailleImageCompress,
         &larg, &haut,&comp,vInfos.canaux);
 
         // informations memoire partagee MAJ
@@ -207,11 +204,10 @@ int main(int argc, char* argv[]){
 
         // Liberer mutex pthread_mutex_t mutex;
         // Incrementer index ecrivain
-        index += tailleImage;
+        memP.header->frameWriter++;
         memP.copieCompteur = memP.header->frameReader;
-        memP.header->frameWriter +=1;
+        index += tailleImageCompress;
         pthread_mutex_unlock(&memP.header->mutex);
-
         // Attendre que le lecteur lit une frame et libere le mutex
         attenteEcrivain(&memP); 
     }
