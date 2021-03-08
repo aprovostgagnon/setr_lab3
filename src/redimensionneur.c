@@ -122,7 +122,7 @@ int main(int argc, char* argv[]){
     memPH.canaux = memImageIn.header->canaux;
     
     // Preparation memoire & initialisation memoire ecrivain
-    prepareMemoire(5*memImageIn.tailleDonnees, 5*hauteur*largeur*memImageIn.header->canaux);
+    prepareMemoire(20*memImageIn.tailleDonnees, 20*hauteur*largeur*memImageIn.header->canaux);
 
     // Creer la memoire partage out en fonction de l'agrandissement voulut
     size_t sizeOut = largeur * hauteur * memImageIn.header->canaux;

@@ -24,6 +24,8 @@ int initMemoirePartageeLecteur(const char* identifiant,
 
     // //Attend le que le compte de l'ecrivaint soit de 1
     while(zone->header->frameWriter == 0);
+
+
      
 
     // //Attendre le mutex

@@ -310,9 +310,9 @@ void convertToGray(const unsigned char* input, const unsigned int in_height, con
 
     for (unsigned int i = 0; i < in_height; ++i) {
         for (unsigned int j = 0; j < in_width; ++j) {
-            output[(i*in_width + j)] = (unsigned char)(0.114*(float)input[(i*in_width+j)*n_channels] +
-                    0.587*(float)input[(i*in_width+j)*n_channels + 1] +
-                    0.299*(float)input[(i*in_width+j)*n_channels + 2]);
+            output[(i*in_width + j)] = (unsigned char)( 0.114*(float)input[(i*in_width+j)*n_channels] +
+                                                        0.587*(float)input[(i*in_width+j)*n_channels + 1] +
+                                                        0.299*(float)input[(i*in_width+j)*n_channels + 2]);
         }
     }
 }

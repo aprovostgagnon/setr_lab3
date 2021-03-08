@@ -235,7 +235,6 @@ int main(int argc, char* argv[])
         if (nbrActifs >= 1 && nbrActifs < 5) {
 
 			for(int i = 0; i < nbrActifs; i++){
-				printf("compositeur: in%i = %s \n",i+1,argv[i+optind]);
 				if(initMemoirePartageeLecteur(argv[i+optind], &zone[i]) != 0)
 					exit(EXIT_FAILURE);
 				// Pour que le trylock dans attenteLecteurAsync ne produise pas de deadlock	
@@ -278,7 +277,7 @@ int main(int argc, char* argv[])
 
 
 
-	prepareMemoire(5*max_size, 0);
+	prepareMemoire(20*max_size, 0);
 
 	/*
 	* END OF MY CODE

@@ -25,7 +25,7 @@ int prepareMemoire(size_t tailleImageEntree, size_t tailleImageSortie){
 // (dans la limite de la mémoire disponible, bien sûr)
 void* tempsreel_malloc(size_t taille){
     if(blockSize < taille){
-        fprintf(stderr, "tempsreel_malloc: blocksize is too big \n");
+        fprintf(stderr, "\n\ntempsreel_malloc: blocksize is too big \n maxblock: %i\n block needed: %i\n\n", blockSize,taille);
         return NULL;
     }
     for(int i = 0; i < NB_OF_BLOCK; i++){

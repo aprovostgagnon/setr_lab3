@@ -145,7 +145,7 @@ int main(int argc, char* argv[]){
     memcpy(&vInfos.canaux, videoInMem+12,4);
     memcpy(&vInfos.fps, videoInMem+16,4);
     size_t tailleFenetre = vInfos.largeur * vInfos.hauteur * vInfos.canaux;
-    prepareMemoire(0, 10*tailleFenetre);
+    prepareMemoire(0, 20*tailleFenetre);
 
     // Memoire initialisation
     memPartage memP;

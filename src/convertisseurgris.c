@@ -98,24 +98,37 @@ int main(int argc, char* argv[]){
     //init memoire lecteur. la memoire est lock a la fin
     initMemoirePartageeLecteur(imageIn,&memImageIn);
 
+    uint32_t w = memImageIn.header->largeur;
+    uint32_t h = memImageIn.header->hauteur;
+    uint32_t ch = memImageIn.header->canaux;
+    
+
+    memPartageHeader memPH;
+    memPH.frameWriter = 0;
+    memPH.frameReader = 0;
+    memPH.hauteur = memImageIn.header->hauteur;
+    memPH.largeur = memImageIn.header->largeur;
+    memPH.canaux = 1;
+    memPH.fps = memImageIn.header->fps;
+    size_t tailleDonnees = w*h*1;
+
     // Preparation memoire & initialisation memoire ecrivain
-    prepareMemoire(5*memImageIn.tailleDonnees, 5*memImageIn.tailleDonnees);
+    prepareMemoire(20*w*h*ch, 20*tailleDonnees);
 
     // Creer la memoire partage  qui sera filtre. la memoire est lock a la fin 
-    if(initMemoirePartageeEcrivain(imageOut, &memImageOut,memImageIn.tailleDonnees,memImageIn.header) != 0)
+    if(initMemoirePartageeEcrivain(imageOut, &memImageOut,tailleDonnees,&memPH) != 0)
         exit(1);
 
     while(1){
 
         //passe le filtre de couleur
-        convertToGray(memImageIn.data, memImageIn.header->hauteur, memImageIn.header->largeur, memImageIn.header->canaux, memImageOut.data);
-
+        convertToGray(memImageIn.data, h, w,ch, memImageOut.data);
 
         //libere les memoires partage
         memImageIn.copieCompteur = memImageIn.header->frameWriter;
         memImageIn.header->frameReader++;
         pthread_mutex_unlock(&memImageIn.header->mutex);
-        
+
         memImageOut.copieCompteur = memImageOut.header->frameReader;
         memImageOut.header->frameWriter++;
         pthread_mutex_unlock(&memImageOut.header->mutex);

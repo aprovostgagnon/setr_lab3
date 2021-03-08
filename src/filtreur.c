@@ -102,7 +102,7 @@ int main(int argc, char* argv[]){
     initMemoirePartageeLecteur(imageIn,&memImageIn);
 
     // Preparation memoire & initialisation memoire ecrivain
-    prepareMemoire(5*memImageIn.tailleDonnees, 5*memImageIn.tailleDonnees);
+    prepareMemoire(20*memImageIn.tailleDonnees, 20*memImageIn.tailleDonnees);
 
     // Creer la memoire partage  qui sera filtre. la memoire est lock a la fin 
     if(initMemoirePartageeEcrivain(imageOut, &memImageOut,memImageIn.tailleDonnees,memImageIn.header) != 0)
@@ -112,9 +112,9 @@ int main(int argc, char* argv[]){
 
         //passe le filtre
         if(typeFiltre == 0)
-            lowpassFilter(memImageIn.header->hauteur, memImageIn.header->largeur, memImageIn.data, memImageOut.data, 5, 10, c);
+            lowpassFilter(memImageIn.header->hauteur, memImageIn.header->largeur, memImageIn.data, memImageOut.data, 5, 10, memImageIn.header->canaux);
         else
-            highpassFilter(memImageIn.header->hauteur, memImageIn.header->largeur, memImageIn.data, memImageOut.data, 5, 10, c);
+            highpassFilter(memImageIn.header->hauteur, memImageIn.header->largeur, memImageIn.data, memImageOut.data, 5, 10, memImageIn.header->canaux);
 
 
         //libere les memoires partage
