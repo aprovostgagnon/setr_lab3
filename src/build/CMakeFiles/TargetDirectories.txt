@@ -1,0 +1,7 @@
+/home/setr/Bureau/setr_lab3/src/build/CMakeFiles/rebuild_cache.dir
+/home/setr/Bureau/setr_lab3/src/build/CMakeFiles/compositeur.dir
+/home/setr/Bureau/setr_lab3/src/build/CMakeFiles/decodeur.dir
+/home/setr/Bureau/setr_lab3/src/build/CMakeFiles/edit_cache.dir
+/home/setr/Bureau/setr_lab3/src/build/CMakeFiles/redimensionneur.dir
+/home/setr/Bureau/setr_lab3/src/build/CMakeFiles/filtreur.dir
+/home/setr/Bureau/setr_lab3/src/build/CMakeFiles/convertisseur.dir

@@ -81,13 +81,13 @@ int main(int argc, char* argv[]){
 
         // Verifie type ordonnancement
         sched_getattr(0, &ord,sizeof(struct sched_attr),0);
-        if(strcmp(type_ord, "NORT\0")){
+        if(strcmp(type_ord, "NORT")){
             // default setting
-        } else if(strcmp(type_ord, "RR\0")) {
+        } else if(strcmp(type_ord, "RR")) {
             ord.sched_policy = SCHED_RR;
-        } else if (strcmp(type_ord, "FIFO\0")) {
+        } else if (strcmp(type_ord, "FIFO")) {
             ord.sched_policy = SCHED_FIFO;
-        } else if (strcmp(type_ord, "DEADLINE\0")){
+        } else if (strcmp(type_ord, "DEADLINE")){
             ord.sched_policy = SCHED_DEADLINE;
             ord.sched_priority = -101;
             ord.sched_runtime = (__u64)atoi(strtok(options,",")); 
@@ -128,7 +128,6 @@ int main(int argc, char* argv[]){
     size_t sizeOut = largeur * hauteur * memImageIn.header->canaux;
     if(initMemoirePartageeEcrivain(imageOut, &memImageOut,sizeOut,&memPH) != 0)
         exit(1);
-    printf("redimensionneur: init mem ecrivain \n");
     unsigned int hauteur_in = (unsigned int) memImageIn.header->hauteur;
     unsigned int largeur_in = (unsigned int) memImageIn.header->largeur;
     unsigned int canaux_in = (unsigned int) memImageIn.header->canaux;

@@ -389,7 +389,7 @@ int main(int argc, char* argv[])
 
 				fseek(fileStat, 0, SEEK_END);
 				for (int i = 0; i < nbrActifs; i++) {
-					fprintf(fileStat, "(%f) flux %d: %f\n", currentTime, i+1, frames_cnt[i] / deltaTime);
+					fprintf(fileStat, "(%f) flux %d, fps: %f\n", currentTime, i+1, frames_cnt[i] / deltaTime);
 					frames_cnt[i] = 0;
             	}
 				fclose(fileStat);
